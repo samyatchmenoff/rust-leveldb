@@ -21,7 +21,7 @@ pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
     let err : *u8 = null();
     str::as_c_str(name, |cname| {
-        let r = leveldb::leveldb_open(copts, cname, addr_of(&err));
+        let r = leveldb_open(copts, cname, addr_of(&err));
         if is_null(r) {
             Err(str::raw::from_buf(err))
         } else {
@@ -223,6 +223,8 @@ extern "C" mod leveldb {
     fn leveldb_env_destroy(env: *leveldb_env_t);
 }
 
+use leveldb::*;
+
 type db_ = *leveldb_t;
 type opts = leveldb_options_t;
 type read_optioin = *leveldb_readoptions_t;
@@ -261,35 +263,35 @@ pub enum WriteFlag {
 }
 
 fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
-    let copts = leveldb::leveldb_options_create();
+    let copts = leveldb_options_create();
     for opts.each |&o| {
         match o {
           create_if_missing => {
-            leveldb::leveldb_options_set_create_if_missing(copts, 1u8);
+            leveldb_options_set_create_if_missing(copts, 1u8);
           }
           error_if_exists => {
-            leveldb::leveldb_options_set_error_if_exists(copts, 1u8);
+            leveldb_options_set_error_if_exists(copts, 1u8);
           }
           paranoid_checks => {
-            leveldb::leveldb_options_set_paranoid_checks(copts, 1u8);
+            leveldb_options_set_paranoid_checks(copts, 1u8);
           }
           // env;
           // log
           write_buffer_size(sz) => {
-            leveldb::leveldb_options_set_write_buffer_size(copts, sz);
+            leveldb_options_set_write_buffer_size(copts, sz);
           }
           max_open_files(num) => {
-            leveldb::leveldb_options_set_max_open_files(copts, num);
+            leveldb_options_set_max_open_files(copts, num);
           }
           // block_cache();
           block_size(sz) => {
-            leveldb::leveldb_options_set_block_size(copts, sz);
+            leveldb_options_set_block_size(copts, sz);
           }
           block_restart_interval(int) => {
-            leveldb::leveldb_options_set_block_restart_interval(copts, int);
+            leveldb_options_set_block_restart_interval(copts, int);
           }
           compression(ct) => {
-            leveldb::leveldb_options_set_compression(copts, ct);
+            leveldb_options_set_compression(copts, ct);
           }
         }
     }
@@ -298,17 +300,17 @@ fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
 
 fn to_c_readoptions(opts: &[ReadFlag])
     -> *leveldb_readoptions_t {
-    let copts = leveldb::leveldb_readoptions_create();
+    let copts = leveldb_readoptions_create();
     for opts.each |&o| {
         match o {
           verify_checksum => {
-            leveldb::leveldb_readoptions_set_verify_checksums(copts, 1u8);
+            leveldb_readoptions_set_verify_checksums(copts, 1u8);
           }
           full_cache => {
-            leveldb::leveldb_readoptions_set_fill_cache(copts, 1u8);
+            leveldb_readoptions_set_fill_cache(copts, 1u8);
           }
           use_snapshot(snapshot) => {
-            leveldb::leveldb_readoptions_set_snapshot(copts, snapshot);
+            leveldb_readoptions_set_snapshot(copts, snapshot);
           }
         }
     }
@@ -317,11 +319,11 @@ fn to_c_readoptions(opts: &[ReadFlag])
 
 fn to_c_writeoptions(opts: &[WriteFlag])
     -> *leveldb_writeoptions_t {
-    let copts = leveldb::leveldb_writeoptions_create();
+    let copts = leveldb_writeoptions_create();
     for opts.each |&o| {
         match o {
           sync => {
-            leveldb::leveldb_writeoptions_set_sync(copts, 1u8);
+            leveldb_writeoptions_set_sync(copts, 1u8);
           }
         }
     }
@@ -329,7 +331,7 @@ fn to_c_writeoptions(opts: &[WriteFlag])
 }
 
 impl db: Drop {
-    fn finalize(&self) { leveldb::leveldb_close(self.db) }
+    fn finalize(&self) { leveldb_close(self.db) }
 }
 
 impl db {
@@ -338,7 +340,7 @@ impl db {
         let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
-            let r = leveldb::leveldb_get(
+            let r = leveldb_get(
                 self.db, copts, kb, klen as size_t,
                 addr_of(&vlen), addr_of(&err));
             if is_null(r) {
@@ -354,7 +356,7 @@ impl db {
         let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
             str::as_buf(val, |bv, vlen| {
-                leveldb::leveldb_put(
+                leveldb_put(
                     self.db, copts,
                     bk, klen as size_t,
                     bv, vlen as size_t,
@@ -370,7 +372,7 @@ impl db {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
-            leveldb::leveldb_delete(
+            leveldb_delete(
                 self.db, copts,
                 bk, klen as size_t,
                 addr_of(&err));
@@ -383,7 +385,7 @@ impl db {
     fn write(&self, opts: &[WriteFlag], wb: write_batch) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = null();
-        leveldb::leveldb_write(self.db, copts, wb, addr_of(&err));
+        leveldb_write(self.db, copts, wb, addr_of(&err));
         if is_not_null(err) {
             fail str::raw::from_buf(err);
         }
