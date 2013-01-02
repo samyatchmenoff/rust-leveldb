@@ -394,3 +394,29 @@ impl db {
         leveldb::leveldb_close(self.db);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn hello() {
+        match open([create_if_missing], "/tmp/testdb") {
+            result::Ok(r) => {
+                let secret = ~"leveldb";
+                r.put([], "hello", secret);
+                match r.get([], "hello") {
+                    result::Ok(v) => {
+                        assert v == secret;
+                        io::println("ok");
+                        r.close();
+                    }
+                    result::Err(e) => {
+                        io::println(fmt!("error: %s", e));
+                    }
+                }
+            }
+            result::Err(e) => {
+                io::println(fmt!("error: %s", e));
+            }
+        }
+    }
+}
