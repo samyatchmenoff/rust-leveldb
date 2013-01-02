@@ -1,24 +1,21 @@
-Rust binding for LevelDB
-http://code.google.com/p/leveldb/
+Rust bindings for [LevelDB](https://code.google.com/p/leveldb/)
 
 Sample Code
 -----------
 
 ```rust
-use leveldb;
+extern mod leveldb;
 
-import leveldb::*;
+use leveldb::create_if_missing;
 
 fn main() {
-  alt leveldb::open([create_if_missing], "sample.leveldb") {
-    result::ok(db) {
-      db.put([], "key", "value");
-      let value = db.get([], "key");
-      io::println(#fmt("value for key is \"%s\"", result::get(value)));
+    match leveldb::open([create_if_missing], "sample.leveldb") {
+      result::Ok(db) => {
+        db.put([], "key", "value");
+        let value = db.get([], "key");
+        io::println(fmt!("value for key is \"%s\"", value.unwrap()));
+      }
+      result::Err(e) => { io::println(fmt!("open error: %s" , e)); }
     }
-    result::err(e) {
-      io::println(#fmt("open error: %s", e));
-    }
-  }
 }
 ```
