@@ -9,7 +9,7 @@
 
 extern mod std;
 
-use core::result;
+use core::result::{Err, Ok, Result};
 use core::ptr::{addr_of, is_not_null, is_null, null};
 use core::libc::{c_char, c_int, c_uint, size_t};
 
@@ -17,15 +17,15 @@ pub struct db {
     priv db: *leveldb_t,
 }
 
-pub fn open(opts: options, name: &str) -> result::Result<db, ~str> unsafe {
+pub fn open(opts: options, name: &str) -> Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
     let err : *u8 = null();
     str::as_c_str(name, |cname| {
         let r = leveldb::leveldb_open(copts, cname, ptr::addr_of(&err));
         if is_null(r) {
-            result::Err(str::raw::from_buf(err))
+            Err(str::raw::from_buf(err))
         } else {
-            result::Ok(db{db: r})
+            Ok(db{db: r})
         }
     })
 }
@@ -337,8 +337,7 @@ impl db: Drop {
 }
 
 impl db {
-    fn get(ropts: read_options, key: &str)
-        -> result::Result<~str, ~str> unsafe {
+    fn get(ropts: read_options, key: &str) -> Result<~str, ~str> unsafe {
         let vlen: size_t = 0 as size_t;
         let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
@@ -347,9 +346,9 @@ impl db {
                 self.db, copts, kb, klen as size_t,
                 ptr::addr_of(&vlen), ptr::addr_of(&err));
             if is_null(r) {
-                result::Err(str::raw::from_buf(err))
+                Err(str::raw::from_buf(err))
             } else {
-                result::Ok(str::raw::from_buf(r))
+                Ok(str::raw::from_buf(r))
             }
         })
     }
@@ -400,20 +399,20 @@ mod tests {
     #[test]
     fn hello() {
         match open([create_if_missing], "/tmp/testdb") {
-            result::Ok(r) => {
+            Ok(r) => {
                 let secret = ~"leveldb";
                 r.put([], "hello", secret);
                 match r.get([], "hello") {
-                    result::Ok(v) => {
+                    Ok(v) => {
                         assert v == secret;
                         io::println("ok");
                     }
-                    result::Err(e) => {
+                    Err(e) => {
                         io::println(fmt!("error: %s", e));
                     }
                 }
             }
-            result::Err(e) => {
+            Err(e) => {
                 io::println(fmt!("error: %s", e));
             }
         }
