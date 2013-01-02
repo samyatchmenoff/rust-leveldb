@@ -399,14 +399,16 @@ impl db {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn hello() {
+    fn test() {
         // TODO: should use a proper temporary directory
         let db = open([create_if_missing], "/tmp/testdb").unwrap();
         let key = "foo";
-        let value = ~"bar";
-        db.put([], key, value);
-        assert db.get([], key) == Some(value);
+        db.put([], key, "bar");
+        assert db.get([], key) == Some(~"bar");
+        db.put([], key, "baz");
+        assert db.get([], key) == Some(~"baz");
         db.delete([], key);
         assert db.get([], key).is_none();
+        db.delete([], key);
     }
 }
