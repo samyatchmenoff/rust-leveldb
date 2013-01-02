@@ -17,7 +17,7 @@ pub struct db {
     priv db: *leveldb_t,
 }
 
-pub fn open(opts: &[option], name: &str) -> Result<db, ~str> unsafe {
+pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
     let err : *u8 = null();
     str::as_c_str(name, |cname| {
@@ -234,7 +234,7 @@ type write_batch = *leveldb_writebatch_t;
 const no_compression: c_int = 0;
 const snappy_compression: c_int = 1;
 
-pub enum option {
+pub enum Flag {
     create_if_missing,
     error_if_exists,
     paranoid_checks,
@@ -250,17 +250,17 @@ pub enum option {
 
 type snapshot = *leveldb_snapshot_t;
 
-pub enum read_option {
+pub enum ReadFlag {
     verify_checksum,
     full_cache,
     use_snapshot(snapshot),
 }
 
-pub enum write_option {
+pub enum WriteFlag {
     sync,
 }
 
-fn to_c_options(opts: &[option]) -> *leveldb_options_t {
+fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
     let copts = leveldb::leveldb_options_create();
     for opts.each |&o| {
         match o {
@@ -296,7 +296,7 @@ fn to_c_options(opts: &[option]) -> *leveldb_options_t {
     copts
 }
 
-fn to_c_readoptions(opts: &[read_option])
+fn to_c_readoptions(opts: &[ReadFlag])
     -> *leveldb_readoptions_t {
     let copts = leveldb::leveldb_readoptions_create();
     for opts.each |&o| {
@@ -315,7 +315,7 @@ fn to_c_readoptions(opts: &[read_option])
     copts
 }
 
-fn to_c_writeoptions(opts: &[write_option])
+fn to_c_writeoptions(opts: &[WriteFlag])
     -> *leveldb_writeoptions_t {
     let copts = leveldb::leveldb_writeoptions_create();
     for opts.each |&o| {
@@ -333,7 +333,7 @@ impl db: Drop {
 }
 
 impl db {
-    fn get(ropts: &[read_option], key: &str) -> Result<~str, ~str> unsafe {
+    fn get(ropts: &[ReadFlag], key: &str) -> Result<~str, ~str> unsafe {
         let vlen: size_t = 0 as size_t;
         let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
@@ -349,7 +349,7 @@ impl db {
         })
     }
 
-    fn put(opts: &[write_option], key: &str, val: &str) unsafe {
+    fn put(opts: &[WriteFlag], key: &str, val: &str) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
@@ -366,7 +366,7 @@ impl db {
         }
     }
 
-    fn delete(opts: &[write_option], key: &str) unsafe {
+    fn delete(opts: &[WriteFlag], key: &str) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
@@ -380,7 +380,7 @@ impl db {
         }
     }
 
-    fn write(opts: &[write_option], wb: write_batch) unsafe {
+    fn write(opts: &[WriteFlag], wb: write_batch) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = null();
         leveldb::leveldb_write(self.db, copts, wb, ptr::addr_of(&err));
