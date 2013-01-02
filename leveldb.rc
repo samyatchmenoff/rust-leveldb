@@ -236,10 +236,6 @@ extern "C" mod leveldb {
 
 use leveldb::*;
 
-type db_ = *leveldb_t;
-type opts = leveldb_options_t;
-type read_optioin = *leveldb_readoptions_t;
-type wopts = leveldb_writeoptions_t;
 type write_batch = *leveldb_writebatch_t;
 
 // type compression_type = int;
