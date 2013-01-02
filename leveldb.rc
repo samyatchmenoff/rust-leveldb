@@ -17,6 +17,16 @@ pub struct db {
     priv db: *leveldb_t,
 }
 
+unsafe fn consume_buf(s: *c_char, len: size_t) -> Option<~[u8]> {
+    if is_null(s) {
+        None
+    } else {
+        let e = vec::raw::from_buf_raw(s as *u8, len as uint);
+        leveldb_free(s as *c_void);
+        Some(e)
+    }
+}
+
 unsafe fn consume_s(s: *c_char) -> Option<~str> {
     if is_null(s) {
         None
@@ -279,10 +289,10 @@ impl db: Drop {
 }
 
 impl db {
-    fn get(&self, ropts: &[ReadFlag], key: &str) -> Option<~str> unsafe {
+    fn get(&self, ropts: &[ReadFlag], key: &[u8]) -> Option<~[u8]> unsafe {
         let vlen: size_t = 0;
         let err: *c_char = null();
-        str::as_buf(key, |kb, klen| {
+        vec::as_imm_buf(key, |kb, klen| {
             let copts = to_c_readoptions(ropts);
             let r = leveldb_get(self.db, copts, kb, klen as size_t,
                                 addr_of(&vlen), addr_of(&err));
@@ -290,15 +300,15 @@ impl db {
 
             match consume_s(err) {
                 Some(e) => fail e,
-                None => consume_s(r)
+                None => consume_buf(r, vlen)
             }
         })
     }
 
-    fn put(&self, opts: &[WriteFlag], key: &str, val: &str) unsafe {
+    fn put(&self, opts: &[WriteFlag], key: &[u8], val: &[u8]) unsafe {
         let err: *c_char = null();
-        str::as_buf(key, |bk, klen| {
-            str::as_buf(val, |bv, vlen| {
+        vec::as_imm_buf(key, |bk, klen| {
+            vec::as_imm_buf(val, |bv, vlen| {
                 let copts = to_c_writeoptions(opts);
                 leveldb_put(self.db, copts, bk, klen as size_t, bv,
                             vlen as size_t, addr_of(&err));
@@ -309,9 +319,9 @@ impl db {
         match consume_s(err) { Some(e) => fail e, None => () }
     }
 
-    fn delete(&self, opts: &[WriteFlag], key: &str) unsafe {
+    fn delete(&self, opts: &[WriteFlag], key: &[u8]) unsafe {
         let err: *c_char = null();
-        str::as_buf(key, |bk, klen| {
+        vec::as_imm_buf(key, |bk, klen| {
             let copts = to_c_writeoptions(opts);
             leveldb_delete(self.db, copts, bk, klen as size_t, addr_of(&err));
             leveldb_writeoptions_destroy(copts);
@@ -329,16 +339,18 @@ impl db {
 
 #[cfg(test)]
 mod tests {
+    use str::as_bytes_slice;
+
     // TODO: should use a proper temporary directory
 
     #[test]
     fn test() {
         let db = open([create_if_missing], "/tmp/testdb").unwrap();
-        let key = "foo";
-        db.put([], key, "bar");
-        assert db.get([], key) == Some(~"bar");
-        db.put([], key, "baz");
-        assert db.get([], key) == Some(~"baz");
+        let key = as_bytes_slice("foo");
+        db.put([], key, as_bytes_slice("bar"));
+        assert db.get([], key) == Some(vec::from_slice(as_bytes_slice("bar")));
+        db.put([], key, as_bytes_slice("baz"));
+        assert db.get([], key) == Some(vec::from_slice(as_bytes_slice("baz")));
         db.delete([], key);
         assert db.get([], key).is_none();
         db.delete([], key);
