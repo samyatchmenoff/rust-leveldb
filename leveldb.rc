@@ -231,8 +231,8 @@ type write_batch = *leveldb_writebatch_t;
 
 // type compression_type = int;
 
-const no_compression :c_int = 0i32;
-const snappy_compression :c_int = 1i32;
+const no_compression: c_int = 0;
+const snappy_compression: c_int = 1;
 
 pub enum option {
     create_if_missing,
