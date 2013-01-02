@@ -5,37 +5,29 @@
 
 #[comment = "Rust binding for LevelDB"];
 #[license = "BSD"];
-// #[crate_type = "lib"];
+#[crate_type = "lib"];
 
-use std;
+extern mod std;
 
-import core::result;
-import core::ptr::{addr_of};
-import core::libc::{c_int, c_uint, size_t};
+use core::result;
+use core::ptr::{addr_of};
+use core::libc::{c_char, c_int, c_uint, size_t};
 
-export open;
-export db;
-export option, read_option, write_option;
-
-iface db {
-    fn get(ropts: read_options, key: str) -> result::result<str, str>;
-    fn put(opts: write_options, key: str, val: str);
-    fn delete(opts: write_options, key: str);
-    fn write(opts: write_options, wb: write_batch);
-    fn close();
+pub struct db {
+    priv db: *leveldb_t,
 }
 
-fn open(opts: options, name: str) -> result::result<db, str> unsafe {
+pub fn open(opts: options, name: &str) -> result::Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
     let err : *u8 = ptr::null();
-    ret str::as_buf(name) {|cname|
-        let r = leveldb::leveldb_open(copts, cname, ptr::addr_of(err));
+    str::as_c_str(name, |cname| {
+        let r = leveldb::leveldb_open(copts, cname, ptr::addr_of(&err));
         if r == ptr::null() {
-            result::err(str::unsafe::from_buf(err))
+            result::Err(str::raw::from_buf(err))
         } else {
-            result::ok(r as db)
+            result::Ok(db{db: r})
         }
-    };
+    })
 }
 
 enum leveldb_t {}
@@ -55,12 +47,12 @@ enum leveldb_writebatch_t {}
 enum leveldb_writeoptions_t {}
 
 #[link_args="-lpthread -lstdc++ -Wl,--no-as-needed -lsnappy"]
-native mod leveldb {
+extern "C" mod leveldb {
     // DB Operations
 
     fn leveldb_open(
         opts: *leveldb_options_t,
-        name: *u8,
+        name: *const c_char,
         errptr: **u8
     ) -> *leveldb_t;
 
@@ -242,7 +234,7 @@ type write_batch = *leveldb_writebatch_t;
 const no_compression :c_int = 0i32;
 const snappy_compression :c_int = 1i32;
 
-enum option {
+pub enum option {
     create_if_missing,
     error_if_exists,
     paranoid_checks,
@@ -256,149 +248,149 @@ enum option {
     compression(c_int),
 }
 
-type options = [option];
+type options = &[option];
 
 type snapshot = *leveldb_snapshot_t;
 
-enum read_option {
+pub enum read_option {
     verify_checksum,
     full_cache,
     use_snapshot(snapshot),
 }
-type read_options = [read_option];
+type read_options = &[read_option];
 
-enum write_option {
+pub enum write_option {
     sync,
 }
-type write_options = [write_option];
+type write_options = &[write_option];
 
 fn to_c_options(opts: options) -> *leveldb_options_t {
     let copts = leveldb::leveldb_options_create();
-    for vec::each(opts) { |o|
-        alt o {
-          create_if_missing {
+    for vec::each(opts) |&o| {
+        match o {
+          create_if_missing => {
             leveldb::leveldb_options_set_create_if_missing(copts, 1u8);
           }
-          error_if_exists {
+          error_if_exists => {
             leveldb::leveldb_options_set_error_if_exists(copts, 1u8);
           }
-          paranoid_checks {
+          paranoid_checks => {
             leveldb::leveldb_options_set_paranoid_checks(copts, 1u8);
           }
           // env;
-          // log;
-          write_buffer_size(sz) {
+          // log
+          write_buffer_size(sz) => {
             leveldb::leveldb_options_set_write_buffer_size(copts, sz);
           }
-          max_open_files(num) {
+          max_open_files(num) => {
             leveldb::leveldb_options_set_max_open_files(copts, num);
           }
           // block_cache();
-          block_size(sz) {
+          block_size(sz) => {
             leveldb::leveldb_options_set_block_size(copts, sz);
           }
-          block_restart_interval(int) {
+          block_restart_interval(int) => {
             leveldb::leveldb_options_set_block_restart_interval(copts, int);
           }
-          compression(ct) {
+          compression(ct) => {
             leveldb::leveldb_options_set_compression(copts, ct);
           }
         }
     }
-    ret copts;
+    copts
 }
 
 fn to_c_readoptions(opts: read_options)
     -> *leveldb_readoptions_t {
     let copts = leveldb::leveldb_readoptions_create();
-    for vec::each(opts) { |o|
-        alt o {
-          verify_checksum {
+    for vec::each(opts) |&o| {
+        match o {
+          verify_checksum => {
             leveldb::leveldb_readoptions_set_verify_checksums(copts, 1u8);
           }
-          full_cache {
+          full_cache => {
             leveldb::leveldb_readoptions_set_fill_cache(copts, 1u8);
           }
-          use_snapshot(snapshot) {
+          use_snapshot(snapshot) => {
             leveldb::leveldb_readoptions_set_snapshot(copts, snapshot);
           }
         }
     }
-    ret copts;
+    copts
 }
 
 fn to_c_writeoptions(opts: write_options)
     -> *leveldb_writeoptions_t {
     let copts = leveldb::leveldb_writeoptions_create();
-    for vec::each(opts) { |o|
-        alt o {
-          sync {
+    for vec::each(opts) |&o| {
+        match o {
+          sync => {
             leveldb::leveldb_writeoptions_set_sync(copts, 1u8);
           }
         }
     }
-    ret copts;
+    copts
 }
 
-impl of db for db_ {
-    fn get(ropts: read_options, key: str)
-        -> result::result<str, str> unsafe {
+impl db {
+    fn get(ropts: read_options, key: &str)
+        -> result::Result<~str, ~str> unsafe {
         let vlen: size_t = 0 as size_t;
         let err: *u8 = ptr::null();
         let copts = to_c_readoptions(ropts);
-        ret str::as_buf(key) {|kb|
+        str::as_buf(key, |kb, klen| {
             let r = leveldb::leveldb_get(
-                self, copts, kb, str::len(key) as size_t,
-                ptr::addr_of(vlen), ptr::addr_of(err));
+                self.db, copts, kb, klen as size_t,
+                ptr::addr_of(&vlen), ptr::addr_of(&err));
             if r == ptr::null() {
-                result::err(str::unsafe::from_buf(err))
+                result::Err(str::raw::from_buf(err))
             } else {
-                result::ok(str::unsafe::from_buf(r))
+                result::Ok(str::raw::from_buf(r))
             }
-        };
+        })
     }
 
-    fn put(opts: write_options, key: str, val: str) unsafe {
+    fn put(opts: write_options, key: &str, val: &str) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = ptr::null();
-        str::as_buf(key) {|bk|
-            str::as_buf(val) {|bv|
+        str::as_buf(key, |bk, klen| {
+            str::as_buf(val, |bv, vlen| {
                 leveldb::leveldb_put(
-                    self, copts,
-                    bk, str::len(key) as size_t,
-                    bv, str::len(val) as size_t,
-                    ptr::addr_of(err));
-            }
-        }
+                    self.db, copts,
+                    bk, klen as size_t,
+                    bv, vlen as size_t,
+                    ptr::addr_of(&err));
+            });
+        });
         if err != ptr::null() {
-            fail str::unsafe::from_buf(err);
+            fail str::raw::from_buf(err);
         }
     }
 
-    fn delete(opts: write_options, key: str) unsafe {
+    fn delete(opts: write_options, key: &str) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = ptr::null();
-        str::as_buf(key) {|bk|
+        str::as_buf(key, |bk, klen| {
             leveldb::leveldb_delete(
-                self, copts,
-                bk, str::len(key) as size_t,
-                ptr::addr_of(err));
-        }
+                self.db, copts,
+                bk, klen as size_t,
+                ptr::addr_of(&err));
+        });
         if err != ptr::null() {
-            fail str::unsafe::from_buf(err);
+            fail str::raw::from_buf(err);
         }
     }
 
     fn write(opts: write_options, wb: write_batch) unsafe {
         let copts = to_c_writeoptions(opts);
         let err: *u8 = ptr::null();
-        leveldb::leveldb_write(self, copts, wb, ptr::addr_of(err));
+        leveldb::leveldb_write(self.db, copts, wb, ptr::addr_of(&err));
         if err != ptr::null() {
-            fail str::unsafe::from_buf(err);
+            fail str::raw::from_buf(err);
         }
     }
 
     fn close() {
-        leveldb::leveldb_close(self);
+        leveldb::leveldb_close(self.db);
     }
 }
