@@ -396,23 +396,10 @@ impl db {
 mod tests {
     #[test]
     fn hello() {
-        match open([create_if_missing], "/tmp/testdb") {
-            Ok(r) => {
-                let secret = ~"leveldb";
-                r.put([], "hello", secret);
-                match r.get([], "hello") {
-                    Ok(v) => {
-                        assert v == secret;
-                        io::println("ok");
-                    }
-                    Err(e) => {
-                        io::println(fmt!("error: %s", e));
-                    }
-                }
-            }
-            Err(e) => {
-                io::println(fmt!("error: %s", e));
-            }
-        }
+        // TODO: should use a proper temporary directory
+        let db = open([create_if_missing], "/tmp/testdb").unwrap();
+        let secret = ~"leveldb";
+        db.put([], "hello", secret);
+        assert db.get([], "hello").unwrap() == secret;
     }
 }
