@@ -221,7 +221,7 @@ fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
     for opts.each |&o| {
         match o {
           create_if_missing => {
-            leveldb_options_set_create_if_missing(copts, 1u8);
+            leveldb_options_set_create_if_missing(copts, 1);
           }
           error_if_exists => {
             leveldb_options_set_error_if_exists(copts, 1);
