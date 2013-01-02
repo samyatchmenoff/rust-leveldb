@@ -332,6 +332,10 @@ fn to_c_writeoptions(opts: write_options)
     copts
 }
 
+impl db: Drop {
+    fn finalize(&self) { leveldb::leveldb_close(self.db) }
+}
+
 impl db {
     fn get(ropts: read_options, key: &str)
         -> result::Result<~str, ~str> unsafe {
@@ -389,10 +393,6 @@ impl db {
             fail str::raw::from_buf(err);
         }
     }
-
-    fn close() {
-        leveldb::leveldb_close(self.db);
-    }
 }
 
 #[cfg(test)]
@@ -407,7 +407,6 @@ mod tests {
                     result::Ok(v) => {
                         assert v == secret;
                         io::println("ok");
-                        r.close();
                     }
                     result::Err(e) => {
                         io::println(fmt!("error: %s", e));
