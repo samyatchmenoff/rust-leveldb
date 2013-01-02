@@ -58,180 +58,132 @@ enum leveldb_writeoptions_t {}
 
 #[link_args="-lpthread -lstdc++ -Wl,--no-as-needed -lsnappy"]
 extern "C" mod leveldb {
-    // DB Operations
+    // DB operations
 
-    fn leveldb_open(
-        opts: *leveldb_options_t,
-        name: *const c_char,
-        errptr: **c_char
-    ) -> *leveldb_t;
+    fn leveldb_open(options: *const leveldb_options_t, name: *const c_char,
+                    errptr: **c_char) -> *leveldb_t;
 
     fn leveldb_close(db: *leveldb_t);
 
-    fn leveldb_get(
-        db: *leveldb_t,
-        opts: *leveldb_readoptions_t,
-        key: *u8,
-        klen: size_t,
-        vlen: *size_t,
-        errptr: **c_char
-    ) -> *c_char;
+    fn leveldb_get(db: *leveldb_t, options: *const leveldb_readoptions_t,
+                   key: *const u8, keylen: size_t, vlen: *const size_t,
+                   errptr: **c_char) -> *c_char;
 
-    fn leveldb_put(
-        db: *leveldb_t,
-        opts: *leveldb_writeoptions_t,
-        key: *u8,
-        klen: size_t,
-        val: *u8,
-        vlen: size_t,
-        errptr: **c_char
-    );
+    fn leveldb_put(db: *leveldb_t, options: *const leveldb_writeoptions_t,
+                   key: *const u8, keylen: size_t, val: *const u8,
+                   vallen: size_t, errptr: **c_char);
 
-    fn leveldb_delete(
-        db: *leveldb_t,
-        opts: *leveldb_writeoptions_t,
-        key: *u8,
-        klen: size_t,
-        errptr: **c_char
-    );
+    fn leveldb_delete(db: *leveldb_t, options: *const leveldb_writeoptions_t,
+                      key: *const u8, keylen: size_t, errptr: **c_char);
 
-    fn leveldb_write(
-        db: *leveldb_t,
-        opts: *leveldb_writeoptions_t,
-        wb: *leveldb_writebatch_t,
-        errptr: **c_char
-    );
+    fn leveldb_write(db: *leveldb_t, options: *const leveldb_writeoptions_t,
+                     batch: *leveldb_writebatch_t, errptr: **c_char);
 
-    fn leveldb_create_iterator(
-        db: *leveldb_t,
-        opts: *leveldb_readoptions_t
-    ) -> *leveldb_iterator_t;
+    fn leveldb_create_iterator(db: *leveldb_t,
+                               options: *const leveldb_readoptions_t) ->
+     *leveldb_iterator_t;
 
-    fn leveldb_create_snapshot(
-        db: *leveldb_t
-    ) -> *leveldb_snapshot_t;
+    fn leveldb_create_snapshot(db: *leveldb_t) -> *const leveldb_snapshot_t;
 
-    fn leveldb_release_snapshot(
-        db: *leveldb_t,
-        snapshot: *leveldb_snapshot_t
-    );
+    fn leveldb_release_snapshot(db: *leveldb_t,
+                                snapshot: *const leveldb_snapshot_t);
 
-    fn leveldb_property_value(
-        db: *leveldb_t,
-        propname: *u8
-    );
+    fn leveldb_property_value(db: *leveldb_t, propname: *const c_char);
 
-    fn leveldb_approximate_sizes(
-        db: *leveldb_t,
-        num_ranges: c_int,
-        range_start_key: **u8,
-        range_start_key_len: *size_t,
-        range_limit_key: **u8,
-        range_limit_key_len: *size_t,
-        sizes: *u64
-    );
+    fn leveldb_approximate_sizes(db: *leveldb_t, num_ranges: c_int,
+                                 range_start_key: *const *const u8,
+                                 range_start_key_len: *const size_t,
+                                 range_limit_key: *const *const u8,
+                                 range_limit_key_len: *const size_t,
+                                 sizes: *u64);
 
     // Management operations
-    fn leveldb_destroy_db(
-        opts: *leveldb_options_t,
-        name: *u8,
-        errptr: **c_char);
-
-    fn leveldb_repair_db(
-        opts: *leveldb_options_t,
-        name: *u8,
-        errptr: **c_char);
+    fn leveldb_destroy_db(options: *const leveldb_options_t,
+                          name: *const c_char, errptr: **c_char);
+    fn leveldb_repair_db(options: *const leveldb_options_t,
+                         name: *const c_char, errptr: **c_char);
 
     // Iterator
-
     fn leveldb_iter_destroy(it: *leveldb_iterator_t);
-    fn leveldb_iter_valid(it: *leveldb_iterator_t) -> u8;
+    fn leveldb_iter_valid(it: *const leveldb_iterator_t) -> u8;
     fn leveldb_iter_seek_to_first(it: *leveldb_iterator_t);
     fn leveldb_iter_seek_to_last(it: *leveldb_iterator_t);
-    fn leveldb_iter_seek(it: *leveldb_iterator_t,
-                         key: *u8, klen: size_t);
+    fn leveldb_iter_seek(it: *leveldb_iterator_t, k: *const u8, klen: size_t);
     fn leveldb_iter_next(it: *leveldb_iterator_t);
     fn leveldb_iter_prev(it: *leveldb_iterator_t);
-    fn leveldb_iter_key(it: *leveldb_iterator_t,
-                        klen: size_t) -> *u8;
-    fn leveldb_iter_value(it: *leveldb_iterator_t,
-                          vlen: *size_t) -> *u8;
-    fn leveldb_iter_get_error(it: *leveldb_iterator_t, errptr: **c_char);
+    fn leveldb_iter_key(it: *const leveldb_iterator_t, klen: size_t) ->
+     *const u8;
+    fn leveldb_iter_value(it: *const leveldb_iterator_t, vlen: *size_t) ->
+     *const u8;
+    fn leveldb_iter_get_error(it: *const leveldb_iterator_t,
+                              errptr: **c_char);
 
     // Write batch
 
     fn leveldb_writebatch_create() -> *leveldb_writebatch_t;
-    fn leveldb_writebatch_destroy(wb: *leveldb_writebatch_t);
-    fn leveldb_writebatch_clear(wb: *leveldb_writebatch_t);
-    fn leveldb_writebatch_put(
-        wb: *leveldb_writebatch_t,
-        key: *u8, klen: size_t,
-        val: *u8, klen: size_t);
-    fn leveldb_writebatch_delete(
-        wb: *leveldb_writebatch_t,
-        key: *u8, klen: size_t);
+    fn leveldb_writebatch_destroy(batch: *leveldb_writebatch_t);
+    fn leveldb_writebatch_clear(batch: *leveldb_writebatch_t);
+    fn leveldb_writebatch_put(batch: *leveldb_writebatch_t, key: *const u8,
+                              klen: size_t, val: *const u8, klen: size_t);
+    fn leveldb_writebatch_delete(batch: *leveldb_writebatch_t, key: *const u8,
+                                 klen: size_t);
 
-    /* FIXME: how to passing function pointers?
-    fn leveldb_writebatch_iterate(
-        wb: *leveldb_writebatch_t, state: *u8,
+    /* TODO: requires support for exposing code to C
+    fn leveldb_writebatch_iterate(batch: *leveldb_writebatch_t, state: *u8,
         void (*put)(void*, const char* k, size_t klen,
         const char* v, size_t vlen),
         void (*deleted)(void*, const char* k, size_t klen));
         put: *u8, delete: *u8);
     */
 
-    // options
+    // Options
     fn leveldb_options_create() -> *leveldb_options_t;
-    fn leveldb_options_destroy(opts: *leveldb_options_t);
-    fn leveldb_options_set_comparator(
-        opts: *leveldb_options_t, c: *leveldb_comparator_t);
-    fn leveldb_options_set_create_if_missing(
-        opts: *leveldb_options_t, x: u8);
-    fn leveldb_options_set_error_if_exists(
-        opts: *leveldb_options_t, x: u8);
-    fn leveldb_options_set_paranoid_checks(
-        opts: *leveldb_options_t, x: u8);
-    fn leveldb_options_set_env(
-        opts: *leveldb_options_t, env: *leveldb_env_t);
-    fn leveldb_options_set_info_log(
-        opts: *leveldb_options_t, g: *leveldb_logger_t);
-    fn leveldb_options_set_write_buffer_size(
-        opts: *leveldb_options_t, x: size_t);
-    fn leveldb_options_set_max_open_files(
-        opts: *leveldb_options_t, x: c_int);
-    fn leveldb_options_set_block_size(
-        opts: *leveldb_options_t, x: size_t);
-    fn leveldb_options_set_block_restart_interval(
-        opts: *leveldb_options_t, x: c_int);
-    fn leveldb_options_set_compression(
-        opts: *leveldb_options_t, z: c_int);
+    fn leveldb_options_destroy(options: *leveldb_options_t);
+    fn leveldb_options_set_comparator(options: *leveldb_options_t,
+                                      c: *leveldb_comparator_t);
+    fn leveldb_options_set_create_if_missing(options: *leveldb_options_t,
+                                             x: u8);
+    fn leveldb_options_set_error_if_exists(options: *leveldb_options_t,
+                                           x: u8);
+    fn leveldb_options_set_paranoid_checks(options: *leveldb_options_t,
+                                           x: u8);
+    fn leveldb_options_set_env(options: *leveldb_options_t,
+                               env: *leveldb_env_t);
+    fn leveldb_options_set_info_log(options: *leveldb_options_t,
+                                    g: *leveldb_logger_t);
+    fn leveldb_options_set_write_buffer_size(options: *leveldb_options_t,
+                                             x: size_t);
+    fn leveldb_options_set_max_open_files(options: *leveldb_options_t,
+                                          x: c_int);
+    fn leveldb_options_set_block_size(options: *leveldb_options_t, x: size_t);
+    fn leveldb_options_set_block_restart_interval(options: *leveldb_options_t,
+                                                  x: c_int);
+    fn leveldb_options_set_compression(options: *leveldb_options_t, z: c_int);
 
-    // read options
+    // Read options
     fn leveldb_readoptions_create() -> *leveldb_readoptions_t;
     fn leveldb_readoptions_destroy(ropts: *leveldb_readoptions_t);
-    fn leveldb_readoptions_set_verify_checksums(
-        ropts: *leveldb_readoptions_t, v: u8);
-    fn leveldb_readoptions_set_fill_cache(
-        ropts: *leveldb_readoptions_t, v: u8);
-    fn leveldb_readoptions_set_snapshot(
-        ropts: *leveldb_readoptions_t,
-        snapshot: *leveldb_snapshot_t);
+    fn leveldb_readoptions_set_verify_checksums(ropts: *leveldb_readoptions_t,
+                                                v: u8);
+    fn leveldb_readoptions_set_fill_cache(ropts: *leveldb_readoptions_t,
+                                          v: u8);
+    fn leveldb_readoptions_set_snapshot(ropts: *leveldb_readoptions_t,
+                                        snapshot: *leveldb_snapshot_t);
 
-    // write options
+    // Write options
     fn leveldb_writeoptions_create() -> *leveldb_writeoptions_t;
-    fn leveldb_writeoptions_destroy(opts: *leveldb_writeoptions_t);
-    fn leveldb_writeoptions_set_sync( opts: *leveldb_writeoptions_t, v: u8);
+    fn leveldb_writeoptions_destroy(options: *leveldb_writeoptions_t);
+    fn leveldb_writeoptions_set_sync(options: *leveldb_writeoptions_t, v: u8);
 
-    /* Cache */
-
+    // Cache
     fn leveldb_cache_create_lru(capacity: size_t) -> *leveldb_cache_t;
     fn leveldb_cache_destroy(cache: *leveldb_cache_t);
 
-    /* Env */
-
+    // Env
     fn leveldb_create_default_env() -> *leveldb_env_t;
     fn leveldb_env_destroy(env: *leveldb_env_t);
 
+    // Utility
     fn leveldb_free(ptr: *c_void);
 }
 
@@ -260,15 +212,9 @@ pub enum Flag {
 
 type snapshot = *leveldb_snapshot_t;
 
-pub enum ReadFlag {
-    verify_checksum,
-    full_cache,
-    use_snapshot(snapshot),
-}
+pub enum ReadFlag { verify_checksum, full_cache, use_snapshot(snapshot), }
 
-pub enum WriteFlag {
-    sync,
-}
+pub enum WriteFlag { sync, }
 
 fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
     let copts = leveldb_options_create();
@@ -278,10 +224,10 @@ fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
             leveldb_options_set_create_if_missing(copts, 1u8);
           }
           error_if_exists => {
-            leveldb_options_set_error_if_exists(copts, 1u8);
+            leveldb_options_set_error_if_exists(copts, 1);
           }
           paranoid_checks => {
-            leveldb_options_set_paranoid_checks(copts, 1u8);
+            leveldb_options_set_paranoid_checks(copts, 1);
           }
           // env;
           // log
@@ -298,25 +244,20 @@ fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
           block_restart_interval(int) => {
             leveldb_options_set_block_restart_interval(copts, int);
           }
-          compression(ct) => {
-            leveldb_options_set_compression(copts, ct);
-          }
+          compression(ct) => { leveldb_options_set_compression(copts, ct); }
         }
     }
     copts
 }
 
-fn to_c_readoptions(opts: &[ReadFlag])
-    -> *leveldb_readoptions_t {
+fn to_c_readoptions(opts: &[ReadFlag]) -> *leveldb_readoptions_t {
     let copts = leveldb_readoptions_create();
     for opts.each |&o| {
         match o {
           verify_checksum => {
-            leveldb_readoptions_set_verify_checksums(copts, 1u8);
+            leveldb_readoptions_set_verify_checksums(copts, 1);
           }
-          full_cache => {
-            leveldb_readoptions_set_fill_cache(copts, 1u8);
-          }
+          full_cache => { leveldb_readoptions_set_fill_cache(copts, 1); }
           use_snapshot(snapshot) => {
             leveldb_readoptions_set_snapshot(copts, snapshot);
           }
@@ -325,15 +266,10 @@ fn to_c_readoptions(opts: &[ReadFlag])
     copts
 }
 
-fn to_c_writeoptions(opts: &[WriteFlag])
-    -> *leveldb_writeoptions_t {
+fn to_c_writeoptions(opts: &[WriteFlag]) -> *leveldb_writeoptions_t {
     let copts = leveldb_writeoptions_create();
     for opts.each |&o| {
-        match o {
-          sync => {
-            leveldb_writeoptions_set_sync(copts, 1u8);
-          }
-        }
+        match o { sync => { leveldb_writeoptions_set_sync(copts, 1); } }
     }
     copts
 }
@@ -409,9 +345,7 @@ mod tests {
     }
 
     #[test]
-    fn test_missing() {
-        assert open([], "/tmp/testdb-missing").is_err();
-    }
+    fn test_missing() { assert open([], "/tmp/testdb-missing").is_err() }
 
     #[test]
     fn test_error_if_exists() {
