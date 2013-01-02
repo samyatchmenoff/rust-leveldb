@@ -10,7 +10,7 @@
 extern mod std;
 
 use core::result;
-use core::ptr::{addr_of};
+use core::ptr::{addr_of, is_not_null, is_null, null};
 use core::libc::{c_char, c_int, c_uint, size_t};
 
 pub struct db {
@@ -19,10 +19,10 @@ pub struct db {
 
 pub fn open(opts: options, name: &str) -> result::Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
-    let err : *u8 = ptr::null();
+    let err : *u8 = null();
     str::as_c_str(name, |cname| {
         let r = leveldb::leveldb_open(copts, cname, ptr::addr_of(&err));
-        if r == ptr::null() {
+        if is_null(r) {
             result::Err(str::raw::from_buf(err))
         } else {
             result::Ok(db{db: r})
@@ -340,13 +340,13 @@ impl db {
     fn get(ropts: read_options, key: &str)
         -> result::Result<~str, ~str> unsafe {
         let vlen: size_t = 0 as size_t;
-        let err: *u8 = ptr::null();
+        let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
             let r = leveldb::leveldb_get(
                 self.db, copts, kb, klen as size_t,
                 ptr::addr_of(&vlen), ptr::addr_of(&err));
-            if r == ptr::null() {
+            if is_null(r) {
                 result::Err(str::raw::from_buf(err))
             } else {
                 result::Ok(str::raw::from_buf(r))
@@ -356,7 +356,7 @@ impl db {
 
     fn put(opts: write_options, key: &str, val: &str) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = ptr::null();
+        let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
             str::as_buf(val, |bv, vlen| {
                 leveldb::leveldb_put(
@@ -366,30 +366,30 @@ impl db {
                     ptr::addr_of(&err));
             });
         });
-        if err != ptr::null() {
+        if is_not_null(err) {
             fail str::raw::from_buf(err);
         }
     }
 
     fn delete(opts: write_options, key: &str) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = ptr::null();
+        let err: *u8 = null();
         str::as_buf(key, |bk, klen| {
             leveldb::leveldb_delete(
                 self.db, copts,
                 bk, klen as size_t,
                 ptr::addr_of(&err));
         });
-        if err != ptr::null() {
+        if is_not_null(err) {
             fail str::raw::from_buf(err);
         }
     }
 
     fn write(opts: write_options, wb: write_batch) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = ptr::null();
+        let err: *u8 = null();
         leveldb::leveldb_write(self.db, copts, wb, ptr::addr_of(&err));
-        if err != ptr::null() {
+        if is_not_null(err) {
             fail str::raw::from_buf(err);
         }
     }
