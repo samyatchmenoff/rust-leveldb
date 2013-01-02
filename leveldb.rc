@@ -405,7 +405,7 @@ mod tests {
         let key = "foo";
         let value = ~"bar";
         db.put([], key, value);
-        assert db.get([], key).unwrap() == value;
+        assert db.get([], key) == Some(value);
         db.delete([], key);
         assert db.get([], key).is_none();
     }
