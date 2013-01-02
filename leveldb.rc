@@ -11,21 +11,30 @@ extern mod std;
 
 use core::result::{Err, Ok, Result};
 use core::ptr::{addr_of, is_not_null, is_null, null};
-use core::libc::{c_char, c_int, c_uint, size_t};
+use core::libc::{c_char, c_int, c_uint, c_void, size_t};
 
 pub struct db {
     priv db: *leveldb_t,
 }
 
+unsafe fn consume_s(s: *c_char) -> Option<~str> {
+    if is_null(s) {
+        None
+    } else {
+        let e = str::raw::from_c_str(s);
+        leveldb_free(s as *c_void);
+        Some(e)
+    }
+}
+
 pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> unsafe {
     let copts = to_c_options(opts);
-    let err : *u8 = null();
+    let err: *c_char = null();
     str::as_c_str(name, |cname| {
         let r = leveldb_open(copts, cname, addr_of(&err));
-        if is_null(r) {
-            Err(str::raw::from_buf(err)) // XXX: memory leak
-        } else {
-            Ok(db{db: r})
+        match consume_s(err) {
+            Some(e) => Err(e),
+            None => Ok(db{db: r})
         }
     })
 }
@@ -53,7 +62,7 @@ extern "C" mod leveldb {
     fn leveldb_open(
         opts: *leveldb_options_t,
         name: *const c_char,
-        errptr: **u8
+        errptr: **c_char
     ) -> *leveldb_t;
 
     fn leveldb_close(db: *leveldb_t);
@@ -64,8 +73,8 @@ extern "C" mod leveldb {
         key: *u8,
         klen: size_t,
         vlen: *size_t,
-        errptr: **u8
-    ) -> *u8;
+        errptr: **c_char
+    ) -> *c_char;
 
     fn leveldb_put(
         db: *leveldb_t,
@@ -74,7 +83,7 @@ extern "C" mod leveldb {
         klen: size_t,
         val: *u8,
         vlen: size_t,
-        errptr: **u8
+        errptr: **c_char
     );
 
     fn leveldb_delete(
@@ -82,14 +91,14 @@ extern "C" mod leveldb {
         opts: *leveldb_writeoptions_t,
         key: *u8,
         klen: size_t,
-        errptr: **u8
+        errptr: **c_char
     );
 
     fn leveldb_write(
         db: *leveldb_t,
         opts: *leveldb_writeoptions_t,
         wb: *leveldb_writebatch_t,
-        errptr: **u8
+        errptr: **c_char
     );
 
     fn leveldb_create_iterator(
@@ -125,12 +134,12 @@ extern "C" mod leveldb {
     fn leveldb_destroy_db(
         opts: *leveldb_options_t,
         name: *u8,
-        errptr: **u8);
+        errptr: **c_char);
 
     fn leveldb_repair_db(
         opts: *leveldb_options_t,
         name: *u8,
-        errptr: **u8);
+        errptr: **c_char);
 
     // Iterator
 
@@ -146,7 +155,7 @@ extern "C" mod leveldb {
                         klen: size_t) -> *u8;
     fn leveldb_iter_value(it: *leveldb_iterator_t,
                           vlen: *size_t) -> *u8;
-    fn leveldb_iter_get_error(it: *leveldb_iterator_t, errptr: **u8);
+    fn leveldb_iter_get_error(it: *leveldb_iterator_t, errptr: **c_char);
 
     // Write batch
 
@@ -221,6 +230,8 @@ extern "C" mod leveldb {
 
     fn leveldb_create_default_env() -> *leveldb_env_t;
     fn leveldb_env_destroy(env: *leveldb_env_t);
+
+    fn leveldb_free(ptr: *c_void);
 }
 
 use leveldb::*;
@@ -337,27 +348,22 @@ impl db: Drop {
 impl db {
     fn get(&self, ropts: &[ReadFlag], key: &str) -> Option<~str> unsafe {
         let vlen: size_t = 0;
-        let err: *u8 = null();
+        let err: *c_char = null();
         let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
             let r = leveldb_get(self.db, copts, kb, klen as size_t,
                                 addr_of(&vlen), addr_of(&err));
 
-            if is_not_null(err) {
-                fail str::raw::from_buf(err) // XXX: memory leak
-            }
-
-            if is_null(r) {
-                None
-            } else {
-                Some(str::raw::from_buf(r)) // XXX: memory leak
+            match consume_s(err) {
+                Some(e) => fail e,
+                None => consume_s(r)
             }
         })
     }
 
     fn put(&self, opts: &[WriteFlag], key: &str, val: &str) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = null();
+        let err: *c_char = null();
         str::as_buf(key, |bk, klen| {
             str::as_buf(val, |bv, vlen| {
                 leveldb_put(
@@ -368,40 +374,35 @@ impl db {
             });
         });
 
-        if is_not_null(err) {
-            fail str::raw::from_buf(err); // XXX: memory leak
-        }
+        match consume_s(err) { Some(e) => fail e, None => () }
     }
 
     fn delete(&self, opts: &[WriteFlag], key: &str) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = null();
+        let err: *c_char = null();
         str::as_buf(key, |bk, klen| {
             leveldb_delete(
                 self.db, copts,
                 bk, klen as size_t,
                 addr_of(&err));
         });
-        if is_not_null(err) {
-            fail str::raw::from_buf(err); // XXX: memory leak
-        }
+        match consume_s(err) { Some(e) => fail e, None => () }
     }
 
     fn write(&self, opts: &[WriteFlag], wb: write_batch) unsafe {
         let copts = to_c_writeoptions(opts);
-        let err: *u8 = null();
+        let err: *c_char = null();
         leveldb_write(self.db, copts, wb, addr_of(&err));
-        if is_not_null(err) {
-            fail str::raw::from_buf(err); // XXX: memory leak
-        }
+        match consume_s(err) { Some(e) => fail e, None => () }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    // TODO: should use a proper temporary directory
+
     #[test]
     fn test() {
-        // TODO: should use a proper temporary directory
         let db = open([create_if_missing], "/tmp/testdb").unwrap();
         let key = "foo";
         db.put([], key, "bar");
@@ -411,5 +412,16 @@ mod tests {
         db.delete([], key);
         assert db.get([], key).is_none();
         db.delete([], key);
+    }
+
+    #[test]
+    fn test_missing() {
+        assert open([], "/tmp/testdb-missing").is_err();
+    }
+
+    #[test]
+    fn test_error_if_exists() {
+        assert open([create_if_missing], "/tmp/testdb-exists").is_ok();
+        assert open([error_if_exists], "/tmp/testdb-missing").is_err();
     }
 }
