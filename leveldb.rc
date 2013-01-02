@@ -28,10 +28,11 @@ unsafe fn consume_s(s: *c_char) -> Option<~str> {
 }
 
 pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> unsafe {
-    let copts = to_c_options(opts);
     let err: *c_char = null();
     str::as_c_str(name, |cname| {
+        let copts = to_c_options(opts);
         let r = leveldb_open(copts, cname, addr_of(&err));
+        leveldb_options_destroy(copts);
         match consume_s(err) {
             Some(e) => Err(e),
             None => Ok(db{db: r})
@@ -345,10 +346,11 @@ impl db {
     fn get(&self, ropts: &[ReadFlag], key: &str) -> Option<~str> unsafe {
         let vlen: size_t = 0;
         let err: *c_char = null();
-        let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
+            let copts = to_c_readoptions(ropts);
             let r = leveldb_get(self.db, copts, kb, klen as size_t,
                                 addr_of(&vlen), addr_of(&err));
+            leveldb_readoptions_destroy(copts);
 
             match consume_s(err) {
                 Some(e) => fail e,
@@ -358,15 +360,13 @@ impl db {
     }
 
     fn put(&self, opts: &[WriteFlag], key: &str, val: &str) unsafe {
-        let copts = to_c_writeoptions(opts);
         let err: *c_char = null();
         str::as_buf(key, |bk, klen| {
             str::as_buf(val, |bv, vlen| {
-                leveldb_put(
-                    self.db, copts,
-                    bk, klen as size_t,
-                    bv, vlen as size_t,
-                    addr_of(&err));
+                let copts = to_c_writeoptions(opts);
+                leveldb_put(self.db, copts, bk, klen as size_t, bv,
+                            vlen as size_t, addr_of(&err));
+                leveldb_writeoptions_destroy(copts);
             });
         });
 
@@ -374,13 +374,11 @@ impl db {
     }
 
     fn delete(&self, opts: &[WriteFlag], key: &str) unsafe {
-        let copts = to_c_writeoptions(opts);
         let err: *c_char = null();
         str::as_buf(key, |bk, klen| {
-            leveldb_delete(
-                self.db, copts,
-                bk, klen as size_t,
-                addr_of(&err));
+            let copts = to_c_writeoptions(opts);
+            leveldb_delete(self.db, copts, bk, klen as size_t, addr_of(&err));
+            leveldb_writeoptions_destroy(copts);
         });
         match consume_s(err) { Some(e) => fail e, None => () }
     }
