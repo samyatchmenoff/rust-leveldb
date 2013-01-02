@@ -334,7 +334,7 @@ impl db: Drop {
 
 impl db {
     fn get(ropts: &[ReadFlag], key: &str) -> Result<~str, ~str> unsafe {
-        let vlen: size_t = 0 as size_t;
+        let vlen: size_t = 0;
         let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
