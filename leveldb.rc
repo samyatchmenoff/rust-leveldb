@@ -23,7 +23,7 @@ pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> unsafe {
     str::as_c_str(name, |cname| {
         let r = leveldb_open(copts, cname, addr_of(&err));
         if is_null(r) {
-            Err(str::raw::from_buf(err))
+            Err(str::raw::from_buf(err)) // XXX: memory leak
         } else {
             Ok(db{db: r})
         }
@@ -344,13 +344,13 @@ impl db {
                                 addr_of(&vlen), addr_of(&err));
 
             if is_not_null(err) {
-                fail str::raw::from_buf(err)
+                fail str::raw::from_buf(err) // XXX: memory leak
             }
 
             if is_null(r) {
                 None
             } else {
-                Some(str::raw::from_buf(r))
+                Some(str::raw::from_buf(r)) // XXX: memory leak
             }
         })
     }
@@ -367,8 +367,9 @@ impl db {
                     addr_of(&err));
             });
         });
+
         if is_not_null(err) {
-            fail str::raw::from_buf(err);
+            fail str::raw::from_buf(err); // XXX: memory leak
         }
     }
 
@@ -382,7 +383,7 @@ impl db {
                 addr_of(&err));
         });
         if is_not_null(err) {
-            fail str::raw::from_buf(err);
+            fail str::raw::from_buf(err); // XXX: memory leak
         }
     }
 
@@ -391,7 +392,7 @@ impl db {
         let err: *u8 = null();
         leveldb_write(self.db, copts, wb, addr_of(&err));
         if is_not_null(err) {
-            fail str::raw::from_buf(err);
+            fail str::raw::from_buf(err); // XXX: memory leak
         }
     }
 }
