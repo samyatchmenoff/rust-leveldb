@@ -335,18 +335,22 @@ impl db: Drop {
 }
 
 impl db {
-    fn get(&self, ropts: &[ReadFlag], key: &str) -> Result<~str, ~str> unsafe {
+    fn get(&self, ropts: &[ReadFlag], key: &str) -> Option<~str> unsafe {
         let vlen: size_t = 0;
         let err: *u8 = null();
         let copts = to_c_readoptions(ropts);
         str::as_buf(key, |kb, klen| {
-            let r = leveldb_get(
-                self.db, copts, kb, klen as size_t,
-                addr_of(&vlen), addr_of(&err));
+            let r = leveldb_get(self.db, copts, kb, klen as size_t,
+                                addr_of(&vlen), addr_of(&err));
+
+            if is_not_null(err) {
+                fail str::raw::from_buf(err)
+            }
+
             if is_null(r) {
-                Err(str::raw::from_buf(err))
+                None
             } else {
-                Ok(str::raw::from_buf(r))
+                Some(str::raw::from_buf(r))
             }
         })
     }
@@ -398,8 +402,11 @@ mod tests {
     fn hello() {
         // TODO: should use a proper temporary directory
         let db = open([create_if_missing], "/tmp/testdb").unwrap();
-        let secret = ~"leveldb";
-        db.put([], "hello", secret);
-        assert db.get([], "hello").unwrap() == secret;
+        let key = "foo";
+        let value = ~"bar";
+        db.put([], key, value);
+        assert db.get([], key).unwrap() == value;
+        db.delete([], key);
+        assert db.get([], key).is_none();
     }
 }
