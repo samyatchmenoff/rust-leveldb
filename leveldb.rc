@@ -292,7 +292,7 @@ fn to_c_writeoptions(opts: &[WriteFlag]) -> *leveldb_writeoptions_t {
     }
 }
 
-impl db: Drop {
+impl Drop for db {
     fn finalize(&self) { unsafe { leveldb_close(self.db) } }
 }
 
@@ -356,7 +356,7 @@ impl db {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use str::as_bytes_slice;
+    use core::str::as_bytes_slice;
 
     // TODO: should use a proper temporary directory
 
