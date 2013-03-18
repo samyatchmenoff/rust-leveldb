@@ -1,5 +1,5 @@
 #[link(name = "leveldb",
-       vers = "0.1",
+       vers = "0.1.0",
        uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
        url = "http://github.com/thestinger/rust-leveldb")];
 
