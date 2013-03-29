@@ -203,8 +203,8 @@ type write_batch = *leveldb_writebatch_t;
 
 // type compression_type = int;
 
-const no_compression: c_int = 0;
-const snappy_compression: c_int = 1;
+static no_compression: c_int = 0;
+static snappy_compression: c_int = 1;
 
 pub enum Flag {
     create_if_missing,
