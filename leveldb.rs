@@ -68,8 +68,8 @@ enum leveldb_writablefile_t {}
 enum leveldb_writebatch_t {}
 enum leveldb_writeoptions_t {}
 
-#[link_args="-lpthread -lstdc++ -Wl,--no-as-needed -lsnappy"]
-extern "C" mod leveldb {
+#[link_args="-lpthread -lstdc++ -lleveldb -Wl,--no-as-needed -lsnappy"]
+extern "C" {
     // DB operations
 
     fn leveldb_open(options: *const leveldb_options_t, name: *const c_char,
@@ -198,8 +198,6 @@ extern "C" mod leveldb {
     // Utility
     fn leveldb_free(ptr: *c_void);
 }
-
-use leveldb::*;
 
 type write_batch = *leveldb_writebatch_t;
 
