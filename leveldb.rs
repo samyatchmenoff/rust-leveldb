@@ -363,20 +363,20 @@ mod tests {
         let db = open([create_if_missing], "/tmp/testdb").unwrap();
         let key = as_bytes_slice("foo");
         db.put([], key, as_bytes_slice("bar"));
-        fail_unless!(db.get([], key) == Some(vec::from_slice(as_bytes_slice("bar"))));
+        assert!(db.get([], key) == Some(vec::from_slice(as_bytes_slice("bar"))));
         db.put([], key, as_bytes_slice("baz"));
-        fail_unless!(db.get([], key) == Some(vec::from_slice(as_bytes_slice("baz"))));
+        assert!(db.get([], key) == Some(vec::from_slice(as_bytes_slice("baz"))));
         db.delete([], key);
-        fail_unless!(db.get([], key).is_none());
+        assert!(db.get([], key).is_none());
         db.delete([], key);
     }
 
     #[test]
-    fn test_missing() { fail_unless!(open([], "/tmp/testdb-missing").is_err()) }
+    fn test_missing() { assert!(open([], "/tmp/testdb-missing").is_err()) }
 
     #[test]
     fn test_error_if_exists() {
-        fail_unless!(open([create_if_missing], "/tmp/testdb-exists").is_ok());
-        fail_unless!(open([error_if_exists], "/tmp/testdb-missing").is_err());
+        assert!(open([create_if_missing], "/tmp/testdb-exists").is_ok());
+        assert!(open([error_if_exists], "/tmp/testdb-missing").is_err());
     }
 }
