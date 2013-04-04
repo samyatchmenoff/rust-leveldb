@@ -10,7 +10,7 @@
 extern mod std;
 
 use core::result::{Err, Ok, Result};
-use core::ptr::{addr_of, is_not_null, is_null, null};
+use core::ptr::{is_not_null, is_null, null};
 use core::libc::{c_char, c_int, c_uint, c_void, size_t};
 
 pub struct db {
@@ -42,7 +42,7 @@ pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> {
         let err: *c_char = null();
         str::as_c_str(name, |cname| {
             let copts = to_c_options(opts);
-            let r = leveldb_open(copts, cname, addr_of(&err));
+            let r = leveldb_open(copts, cname, &err);
             leveldb_options_destroy(copts);
             match consume_s(err) {
                 Some(e) => Err(e),
@@ -302,7 +302,7 @@ impl db {
             vec::as_imm_buf(key, |kb, klen| {
                 let copts = to_c_readoptions(ropts);
                 let r = leveldb_get(self.db, copts, kb, klen as size_t,
-                                    addr_of(&vlen), addr_of(&err));
+                                    &vlen, &err);
                 leveldb_readoptions_destroy(copts);
 
                 match consume_s(err) {
@@ -320,7 +320,7 @@ impl db {
                 vec::as_imm_buf(val, |bv, vlen| {
                     let copts = to_c_writeoptions(opts);
                     leveldb_put(self.db, copts, bk, klen as size_t, bv,
-                                vlen as size_t, addr_of(&err));
+                                vlen as size_t, &err);
                     leveldb_writeoptions_destroy(copts);
                 });
             });
@@ -334,7 +334,7 @@ impl db {
             let err: *c_char = null();
             vec::as_imm_buf(key, |bk, klen| {
                 let copts = to_c_writeoptions(opts);
-                leveldb_delete(self.db, copts, bk, klen as size_t, addr_of(&err));
+                leveldb_delete(self.db, copts, bk, klen as size_t, &err);
                 leveldb_writeoptions_destroy(copts);
             });
             match consume_s(err) { Some(e) => fail!(e), None => () }
@@ -345,7 +345,7 @@ impl db {
         unsafe {
             let copts = to_c_writeoptions(opts);
             let err: *c_char = null();
-            leveldb_write(self.db, copts, wb, addr_of(&err));
+            leveldb_write(self.db, copts, wb, &err);
             match consume_s(err) { Some(e) => fail!(e), None => () }
         }
     }
