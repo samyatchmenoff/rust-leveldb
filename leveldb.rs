@@ -10,8 +10,8 @@
 extern mod std;
 
 use core::result::{Err, Ok, Result};
-use core::ptr::{is_not_null, is_null, null};
-use core::libc::{c_char, c_int, c_uint, c_void, size_t};
+use core::ptr::{is_null, null};
+use core::libc::{c_char, c_int, c_void, size_t};
 
 pub struct db {
     priv db: *leveldb_t,
