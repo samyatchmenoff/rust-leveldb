@@ -9,14 +9,16 @@
 
 extern mod std;
 
-use core::result::{Err, Ok, Result};
-use core::ptr::{is_null, null};
-use core::libc::{c_char, c_int, c_void, size_t};
+use std::ptr::{is_null, null};
+use std::libc::{c_char, c_int, c_void, size_t};
+use std::vec;
+use std::str;
 
 pub struct db {
     priv db: *leveldb_t,
 }
 
+#[fixed_stack_segment]
 unsafe fn consume_buf(s: *c_char, len: size_t) -> Option<~[u8]> {
     if is_null(s) {
         None
@@ -27,6 +29,7 @@ unsafe fn consume_buf(s: *c_char, len: size_t) -> Option<~[u8]> {
     }
 }
 
+#[fixed_stack_segment]
 unsafe fn consume_s(s: *c_char) -> Option<~str> {
     if is_null(s) {
         None
@@ -37,10 +40,11 @@ unsafe fn consume_s(s: *c_char) -> Option<~str> {
     }
 }
 
+#[fixed_stack_segment]
 pub fn open(opts: &[Flag], name: &str) -> Result<db, ~str> {
     unsafe {
         let err: *c_char = null();
-        str::as_c_str(name, |cname| {
+        name.with_c_str(|cname| {
             let copts = to_c_options(opts);
             let r = leveldb_open(copts, cname, &err);
             leveldb_options_destroy(copts);
@@ -68,66 +72,66 @@ enum leveldb_writablefile_t {}
 enum leveldb_writebatch_t {}
 enum leveldb_writeoptions_t {}
 
-#[link_args="-lpthread -lstdc++ -lleveldb -Wl,--no-as-needed -lsnappy"]
+#[link_args="-lleveldb"]
 extern "C" {
     // DB operations
 
-    fn leveldb_open(options: *const leveldb_options_t, name: *const c_char,
+    fn leveldb_open(options: *leveldb_options_t, name: *c_char,
                     errptr: **c_char) -> *leveldb_t;
 
     fn leveldb_close(db: *leveldb_t);
 
-    fn leveldb_get(db: *leveldb_t, options: *const leveldb_readoptions_t,
-                   key: *const u8, keylen: size_t, vlen: *const size_t,
+    fn leveldb_get(db: *leveldb_t, options: *leveldb_readoptions_t,
+                   key: *u8, keylen: size_t, vlen: *size_t,
                    errptr: **c_char) -> *c_char;
 
-    fn leveldb_put(db: *leveldb_t, options: *const leveldb_writeoptions_t,
-                   key: *const u8, keylen: size_t, val: *const u8,
+    fn leveldb_put(db: *leveldb_t, options: *leveldb_writeoptions_t,
+                   key: *u8, keylen: size_t, val: *u8,
                    vallen: size_t, errptr: **c_char);
 
-    fn leveldb_delete(db: *leveldb_t, options: *const leveldb_writeoptions_t,
-                      key: *const u8, keylen: size_t, errptr: **c_char);
+    fn leveldb_delete(db: *leveldb_t, options: *leveldb_writeoptions_t,
+                      key: *u8, keylen: size_t, errptr: **c_char);
 
-    fn leveldb_write(db: *leveldb_t, options: *const leveldb_writeoptions_t,
+    fn leveldb_write(db: *leveldb_t, options: *leveldb_writeoptions_t,
                      batch: *leveldb_writebatch_t, errptr: **c_char);
 
     fn leveldb_create_iterator(db: *leveldb_t,
-                               options: *const leveldb_readoptions_t) ->
+                               options: *leveldb_readoptions_t) ->
      *leveldb_iterator_t;
 
-    fn leveldb_create_snapshot(db: *leveldb_t) -> *const leveldb_snapshot_t;
+    fn leveldb_create_snapshot(db: *leveldb_t) -> *leveldb_snapshot_t;
 
     fn leveldb_release_snapshot(db: *leveldb_t,
-                                snapshot: *const leveldb_snapshot_t);
+                                snapshot: *leveldb_snapshot_t);
 
-    fn leveldb_property_value(db: *leveldb_t, propname: *const c_char);
+    fn leveldb_property_value(db: *leveldb_t, propname: *c_char);
 
     fn leveldb_approximate_sizes(db: *leveldb_t, num_ranges: c_int,
-                                 range_start_key: *const *const u8,
-                                 range_start_key_len: *const size_t,
-                                 range_limit_key: *const *const u8,
-                                 range_limit_key_len: *const size_t,
+                                 range_start_key: **u8,
+                                 range_start_key_len: *size_t,
+                                 range_limit_key: **u8,
+                                 range_limit_key_len: *size_t,
                                  sizes: *u64);
 
     // Management operations
-    fn leveldb_destroy_db(options: *const leveldb_options_t,
-                          name: *const c_char, errptr: **c_char);
-    fn leveldb_repair_db(options: *const leveldb_options_t,
-                         name: *const c_char, errptr: **c_char);
+    fn leveldb_destroy_db(options: *leveldb_options_t,
+                          name: *c_char, errptr: **c_char);
+    fn leveldb_repair_db(options: *leveldb_options_t,
+                         name: *c_char, errptr: **c_char);
 
     // Iterator
     fn leveldb_iter_destroy(it: *leveldb_iterator_t);
-    fn leveldb_iter_valid(it: *const leveldb_iterator_t) -> u8;
+    fn leveldb_iter_valid(it: *leveldb_iterator_t) -> u8;
     fn leveldb_iter_seek_to_first(it: *leveldb_iterator_t);
     fn leveldb_iter_seek_to_last(it: *leveldb_iterator_t);
-    fn leveldb_iter_seek(it: *leveldb_iterator_t, k: *const u8, klen: size_t);
+    fn leveldb_iter_seek(it: *leveldb_iterator_t, k: *u8, klen: size_t);
     fn leveldb_iter_next(it: *leveldb_iterator_t);
     fn leveldb_iter_prev(it: *leveldb_iterator_t);
-    fn leveldb_iter_key(it: *const leveldb_iterator_t, klen: size_t) ->
-     *const u8;
-    fn leveldb_iter_value(it: *const leveldb_iterator_t, vlen: *size_t) ->
-     *const u8;
-    fn leveldb_iter_get_error(it: *const leveldb_iterator_t,
+    fn leveldb_iter_key(it: *leveldb_iterator_t, klen: size_t) ->
+     *u8;
+    fn leveldb_iter_value(it: *leveldb_iterator_t, vlen: *size_t) ->
+     *u8;
+    fn leveldb_iter_get_error(it: *leveldb_iterator_t,
                               errptr: **c_char);
 
     // Write batch
@@ -135,9 +139,9 @@ extern "C" {
     fn leveldb_writebatch_create() -> *leveldb_writebatch_t;
     fn leveldb_writebatch_destroy(batch: *leveldb_writebatch_t);
     fn leveldb_writebatch_clear(batch: *leveldb_writebatch_t);
-    fn leveldb_writebatch_put(batch: *leveldb_writebatch_t, key: *const u8,
-                              klen: size_t, val: *const u8, klen: size_t);
-    fn leveldb_writebatch_delete(batch: *leveldb_writebatch_t, key: *const u8,
+    fn leveldb_writebatch_put(batch: *leveldb_writebatch_t, key: *u8,
+                              klen: size_t, val: *u8, klen: size_t);
+    fn leveldb_writebatch_delete(batch: *leveldb_writebatch_t, key: *u8,
                                  klen: size_t);
 
     /* TODO: requires support for exposing code to C
@@ -226,11 +230,12 @@ pub enum ReadFlag { verify_checksum, full_cache, use_snapshot(snapshot), }
 
 pub enum WriteFlag { sync, }
 
+#[fixed_stack_segment]
 fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
     unsafe {
         let copts = leveldb_options_create();
-        for opts.each |&o| {
-            match o {
+        for o in opts.iter() {
+            match *o {
               create_if_missing => {
                 leveldb_options_set_create_if_missing(copts, 1);
               }
@@ -262,11 +267,12 @@ fn to_c_options(opts: &[Flag]) -> *leveldb_options_t {
     }
 }
 
+#[fixed_stack_segment]
 fn to_c_readoptions(opts: &[ReadFlag]) -> *leveldb_readoptions_t {
     unsafe {
         let copts = leveldb_readoptions_create();
-        for opts.each |&o| {
-            match o {
+        for o in opts.iter() {
+            match *o {
               verify_checksum => {
                 leveldb_readoptions_set_verify_checksums(copts, 1);
               }
@@ -280,26 +286,29 @@ fn to_c_readoptions(opts: &[ReadFlag]) -> *leveldb_readoptions_t {
     }
 }
 
+#[fixed_stack_segment]
 fn to_c_writeoptions(opts: &[WriteFlag]) -> *leveldb_writeoptions_t {
     unsafe {
         let copts = leveldb_writeoptions_create();
-        for opts.each |&o| {
-            match o { sync => { leveldb_writeoptions_set_sync(copts, 1); } }
+        for o in opts.iter() {
+            match *o { sync => { leveldb_writeoptions_set_sync(copts, 1); } }
         }
         copts
     }
 }
 
 impl Drop for db {
-    fn finalize(&self) { unsafe { leveldb_close(self.db) } }
+    #[fixed_stack_segment]
+    fn drop(&self) { unsafe { leveldb_close(self.db) } }
 }
 
 impl db {
+    #[fixed_stack_segment]
     fn get(&self, ropts: &[ReadFlag], key: &[u8]) -> Option<~[u8]> {
         unsafe {
             let vlen: size_t = 0;
             let err: *c_char = null();
-            vec::as_imm_buf(key, |kb, klen| {
+            key.as_imm_buf(|kb, klen| {
                 let copts = to_c_readoptions(ropts);
                 let r = leveldb_get(self.db, copts, kb, klen as size_t,
                                     &vlen, &err);
@@ -313,11 +322,12 @@ impl db {
         }
     }
 
+    #[fixed_stack_segment]
     fn put(&self, opts: &[WriteFlag], key: &[u8], val: &[u8]) {
         unsafe {
         let err: *c_char = null();
-            vec::as_imm_buf(key, |bk, klen| {
-                vec::as_imm_buf(val, |bv, vlen| {
+            key.as_imm_buf(|bk, klen| {
+                val.as_imm_buf(|bv, vlen| {
                     let copts = to_c_writeoptions(opts);
                     leveldb_put(self.db, copts, bk, klen as size_t, bv,
                                 vlen as size_t, &err);
@@ -329,10 +339,11 @@ impl db {
         }
     }
 
+    #[fixed_stack_segment]
     fn delete(&self, opts: &[WriteFlag], key: &[u8]) {
         unsafe {
             let err: *c_char = null();
-            vec::as_imm_buf(key, |bk, klen| {
+            key.as_imm_buf(|bk, klen| {
                 let copts = to_c_writeoptions(opts);
                 leveldb_delete(self.db, copts, bk, klen as size_t, &err);
                 leveldb_writeoptions_destroy(copts);
@@ -341,6 +352,7 @@ impl db {
         }
     }
 
+    #[fixed_stack_segment]
     fn write(&self, opts: &[WriteFlag], wb: write_batch) {
         unsafe {
             let copts = to_c_writeoptions(opts);
