@@ -304,7 +304,7 @@ impl Drop for db {
 
 impl db {
     #[fixed_stack_segment]
-    fn get(&self, ropts: &[ReadFlag], key: &[u8]) -> Option<~[u8]> {
+    pub fn get(&self, ropts: &[ReadFlag], key: &[u8]) -> Option<~[u8]> {
         unsafe {
             let vlen: size_t = 0;
             let err: *c_char = null();
@@ -323,7 +323,7 @@ impl db {
     }
 
     #[fixed_stack_segment]
-    fn put(&self, opts: &[WriteFlag], key: &[u8], val: &[u8]) {
+    pub fn put(&self, opts: &[WriteFlag], key: &[u8], val: &[u8]) {
         unsafe {
         let err: *c_char = null();
             key.as_imm_buf(|bk, klen| {
@@ -340,7 +340,7 @@ impl db {
     }
 
     #[fixed_stack_segment]
-    fn delete(&self, opts: &[WriteFlag], key: &[u8]) {
+    pub fn delete(&self, opts: &[WriteFlag], key: &[u8]) {
         unsafe {
             let err: *c_char = null();
             key.as_imm_buf(|bk, klen| {
@@ -353,7 +353,7 @@ impl db {
     }
 
     #[fixed_stack_segment]
-    fn write(&self, opts: &[WriteFlag], wb: write_batch) {
+    pub fn write(&self, opts: &[WriteFlag], wb: write_batch) {
         unsafe {
             let copts = to_c_writeoptions(opts);
             let err: *c_char = null();
