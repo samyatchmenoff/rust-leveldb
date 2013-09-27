@@ -299,7 +299,7 @@ fn to_c_writeoptions(opts: &[WriteFlag]) -> *leveldb_writeoptions_t {
 
 impl Drop for db {
     #[fixed_stack_segment]
-    fn drop(&self) { unsafe { leveldb_close(self.db) } }
+    fn drop(&mut self) { unsafe { leveldb_close(self.db) } }
 }
 
 impl db {
